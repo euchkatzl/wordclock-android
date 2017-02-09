@@ -1,14 +1,15 @@
 package bm.wordclock.Helper;
 
+import android.support.annotation.NonNull;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+
 import bm.wordclock.model.Plugin;
 
 /**
@@ -17,31 +18,74 @@ import bm.wordclock.model.Plugin;
 
 public class WCProtocol extends WCCommunication {
 
+    protected WCCallbacks mCallbacks;
 
     /* must match wordclock */
     public static final int EVENT_LEFT = 0;
     public static final int EVENT_RIGHT = 1;
     public static final int EVENT_RETURN = 2;
 
-    protected List<Plugin> mPlugins;
-    protected int mActivePlugin;
+    protected static final byte [] rawPacketLeft;
+    protected static final byte [] rawPacketRight;
+    protected static final byte [] rawPacketReturn;
 
-    public WCProtocol() {
-        super();
-        mPlugins = new ArrayList<>();
-        mActivePlugin = -1;
+    protected static byte [] makeSimpleRawPkg(String cmd, int param) {
+        try {
+            JSONObject obj = createMessage();
+            obj.put(cmd, param);
+            return getRawBuffer(obj);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
-    public List<Plugin> getPlugins() {
-        return mPlugins;
+    static {
+        rawPacketLeft = makeSimpleRawPkg("SEND_EVENT", EVENT_LEFT);
+        rawPacketRight = makeSimpleRawPkg("SEND_EVENT", EVENT_RIGHT);
+        rawPacketReturn = makeSimpleRawPkg("SEND_EVENT", EVENT_RETURN);
     }
 
-    public int getActivePlugin() {
-        return mActivePlugin;
+    public WCProtocol(@NonNull String hostName) {
+        super(hostName);
+        mCallbacks = null;
     }
 
 
-    protected void readAndProcess() throws IOException, ProtocolException {
+
+    public void getConfiguration() throws IOException {
+        try {
+            JSONObject reqConfig = createMessage();
+            reqConfig.put("GET_CONFIG", 0);
+            writeObject(reqConfig);
+        } catch (JSONException e) {
+            /* should never happen */
+        }
+    }
+
+    public void setActivePlugin(int index) throws IOException {
+        try {
+            JSONObject msg = createMessage();
+            msg.put("SET_ACTIVE_PLUGIN", index);
+            writeObject(msg);
+        } catch (JSONException e) {
+            /* should never happen */
+        }
+    }
+
+    public void btn_left() throws IOException {
+        writeRaw(rawPacketLeft);
+    }
+
+    public void btn_right() throws IOException {
+        writeRaw(rawPacketRight);
+    }
+
+    public void btn_return() throws IOException {
+        writeRaw(rawPacketReturn);
+    }
+
+    public void readAndProcess() throws IOException, ProtocolException {
         JSONObject json = readObject();
 
         JSONArray plugins = json.optJSONArray("PLUGINS");
@@ -55,20 +99,12 @@ public class WCProtocol extends WCCommunication {
             } catch (JSONException e) {
                 throw new ProtocolException("Malformed plugin list");
             }
-            if(list.size() != mPlugins.size()) {
-                mPlugins.clear();
-                mPlugins.addAll(list);
-
-
-            }
+            mCallbacks.onPluginsChanged(list);
         }
 
         int activePlugin = json.optInt("ACTIVE_PLUGIN", -1);
-        if (activePlugin != -1 && mActivePlugin != activePlugin) {
-            mActivePlugin = activePlugin;
-
-
-
+        if (activePlugin != -1) {
+            mCallbacks.onActivePluginChanged(activePlugin);
         }
     }
 

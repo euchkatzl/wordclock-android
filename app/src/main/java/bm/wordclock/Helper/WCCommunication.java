@@ -1,5 +1,7 @@
 package bm.wordclock.Helper;
 
+import android.support.annotation.NonNull;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -18,9 +20,6 @@ import java.nio.ByteBuffer;
  */
 
 public class WCCommunication {
-
-
-
     private DataInputStream dis;
     private DataOutputStream dos;
     private Socket socket;
@@ -46,15 +45,11 @@ public class WCCommunication {
         }
     }
 
-    public WCCommunication() {
+    public WCCommunication(@NonNull String hostName) {
+        mHostName = hostName;
     }
 
-    protected boolean isConnected() {return connected;}
-
-    public synchronized void connect() throws IOException  {
-        if(mHostName.equals("")) {
-            return;
-        }
+    public synchronized void connect() throws IOException {
         if(connected)
             disconnect();
         InetAddress addr = InetAddress.getByName(mHostName);
@@ -65,6 +60,8 @@ public class WCCommunication {
         dos = new DataOutputStream(os);
         connected = true;
     }
+
+    protected boolean isConnected() {return connected;}
 
     public synchronized void disconnect() {
         if (connected) {
@@ -131,7 +128,7 @@ public class WCCommunication {
         }
     }
 
-    protected  JSONObject createMessage() {
+    public static JSONObject createMessage() {
         JSONObject req = new JSONObject();
         try {
             req.put("API", API_LEVEL);
@@ -140,24 +137,13 @@ public class WCCommunication {
         return req;
     }
 
-    protected  byte [] getRawBuffer(JSONObject obj) throws UnsupportedEncodingException {
+    protected static byte [] getRawBuffer(JSONObject obj) throws UnsupportedEncodingException {
         String serialized = obj.toString();
         byte[] buff = serialized.getBytes("UTF-8");
         return ByteBuffer.allocate(4 + buff.length)
                 .putInt(buff.length)
                 .put(buff)
                 .array();
-    }
-
-    protected byte [] makeSimpleRawPkg(String cmd, int param) {
-        try {
-            JSONObject obj = createMessage();
-            obj.put(cmd, param);
-            return getRawBuffer(obj);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
 }

@@ -12,20 +12,31 @@ import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
-import bm.wordclock.Helper.SocketConnectionHandler;
-import bm.wordclock.android.R;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
-public class PluginsListFragment extends BaseFragment implements SocketConnectionHandler.SocketConnectionListener {
+import bm.wordclock.Helper.SocketConnectionHandler;
+import bm.wordclock.Helper.WCCallbacks;
+import bm.wordclock.Helper.WCCommCallbacks;
+import bm.wordclock.android.R;
+import bm.wordclock.model.Plugin;
+
+public class PluginsListFragment extends BaseFragment implements WCCommCallbacks {
 
     //private OnFragmentInteractionListener mListener;
     private PluginListAdapter mPluginsAdapter;
-    //private List<Plugin> mPlugins;
+
     //private int mCurrentPlugin;
     //private boolean mIsAttached;
 
     private ListView mListView;
     public PluginsListFragment() {
         // Required empty public constructor
+
+
+
+
     }
 
     @Nullable
@@ -35,6 +46,7 @@ public class PluginsListFragment extends BaseFragment implements SocketConnectio
         mListView = (ListView) v.findViewById(R.id.plugin_list_view);
         mListView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
         mListView.setDescendantFocusability(ViewGroup.FOCUS_BEFORE_DESCENDANTS);
+
         mPluginsAdapter = new PluginListAdapter(getMainActivity(), SocketConnectionHandler.getSocketConnectionHandler().getPlugins());
         mListView.setAdapter(mPluginsAdapter);
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -55,15 +67,21 @@ public class PluginsListFragment extends BaseFragment implements SocketConnectio
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         SocketConnectionHandler.getSocketConnectionHandler().addSocketConnectionListener(this);
     }
 
     @Override
-    public void onPause() {
-        super.onPause();
+    public void onDestroy() {
+        super.onDestroy();
         SocketConnectionHandler.getSocketConnectionHandler().removeSocketConnectionListener(this);
+    }
+
+    @Override
+    public void onPause() {
+
+        super.onPause();
     }
 
     @Override
@@ -71,19 +89,23 @@ public class PluginsListFragment extends BaseFragment implements SocketConnectio
         super.onDetach();
     }
 
+
     @Override
-    public void onStateChanged(SocketConnectionHandler.ConnectionState state) {
-        // not used here
+    public void onPluginsChanged(Collection<Plugin> plugins) {
+        //mPlugins.clear();
+        //mPlugins.addAll(plugins);
+        if(mPluginsAdapter != null)
+            mPluginsAdapter.notifyDataSetChanged();
     }
 
     @Override
-    public void onPluginListChanged() {
-        mPluginsAdapter.notifyDataSetChanged();
+    public void onActivePluginChanged(int index) {
+        if(mPluginsAdapter != null)
+            mPluginsAdapter.setSelectedIndex(index);
     }
 
     @Override
-    public void onActivePluginChanged() {
-        mPluginsAdapter.setSelectedIndex(SocketConnectionHandler.getSocketConnectionHandler().getActivePlugin());
+    public void onStateChanged(STATE state) {
 
     }
 }

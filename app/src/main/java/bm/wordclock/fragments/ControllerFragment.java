@@ -2,6 +2,7 @@ package bm.wordclock.fragments;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,21 +32,21 @@ public class ControllerFragment extends BaseFragment {
         ib.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                SocketConnectionHandler.getSocketConnectionHandler().sendEvent(WCProtocol.EVENT_LEFT);
+                SocketConnectionHandler.getSocketConnectionHandler().sendButtonEvent(WCProtocol.EVENT_LEFT);
             }
         });
         ib = (ImageButton)v.findViewById(R.id.ctrl_btn_right);
         ib.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                SocketConnectionHandler.getSocketConnectionHandler().sendEvent(WCProtocol.EVENT_RIGHT);
+                SocketConnectionHandler.getSocketConnectionHandler().sendButtonEvent(WCProtocol.EVENT_RIGHT);
             }
         });
         ib = (ImageButton)v.findViewById(R.id.ctrl_btn_return);
         ib.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                SocketConnectionHandler.getSocketConnectionHandler().sendEvent(WCProtocol.EVENT_RETURN);
+                SocketConnectionHandler.getSocketConnectionHandler().sendButtonEvent(WCProtocol.EVENT_RETURN);
             }
         });
 

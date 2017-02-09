@@ -14,16 +14,20 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import java.util.Collection;
+
 import bm.wordclock.Helper.SocketConnectionHandler;
 
+import bm.wordclock.Helper.WCCommCallbacks;
 import bm.wordclock.fragments.BaseFragment;
 import bm.wordclock.fragments.ConnectionFragment;
 import bm.wordclock.fragments.ControllerFragment;
 import bm.wordclock.fragments.PluginsListFragment;
+import bm.wordclock.model.Plugin;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        SocketConnectionHandler.SocketConnectionListener
+        WCCommCallbacks
         {
 
     private ConnectionFragment mConnectionFragment;
@@ -150,11 +154,16 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
+
+
+
+
+
+
     @Override
-    public void onStateChanged(SocketConnectionHandler.ConnectionState state) {
+    public void onStateChanged(STATE state) {
         switch (state) {
             case CONNECTED:
-
                 selectFragment(mPluginListFragment);
                 break;
             case DISCONNECTED:
@@ -172,12 +181,12 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onPluginListChanged() {
+    public void onPluginsChanged(Collection<Plugin> plugins) {
 
     }
 
     @Override
-    public void onActivePluginChanged() {
+    public void onActivePluginChanged(int index) {
 
     }
 }

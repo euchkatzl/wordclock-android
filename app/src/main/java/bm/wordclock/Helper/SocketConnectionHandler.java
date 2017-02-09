@@ -5,9 +5,12 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.preference.PreferenceManager;
+import android.util.Log;
+
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -19,24 +22,8 @@ import bm.wordclock.android.SettingsActivity;
  * Created by phenze on 08.02.17.
  */
 
-public class SocketConnectionHandler extends WCProtocol {
+public class SocketConnectionHandler extends WCProtocol implements WCCallbacks {
 
-
-    public interface SocketConnectionListener {
-        void onStateChanged(ConnectionState state);
-        void onPluginListChanged();
-        void onActivePluginChanged();
-    }
-
-
-    public enum ConnectionState {
-        CONNECTED,
-        DISCONNECTED,
-        COULD_NOT_CONNECT,
-        HOST_UNKNOWN
-    }
-
-    private ConnectionState mConnectionState;
 
     private Thread mInThread;
     /** Output thread (most of the time: waiting for some packet to send) */
@@ -44,10 +31,12 @@ public class SocketConnectionHandler extends WCProtocol {
     /** Flag whether threads are supposed to run */
     private boolean mRunning;
 
-    private List<SocketConnectionListener> mListener;
     private Handler mUIHandler;
     private WCProtocolProxy mSendingProxy;
     private Context mContext;
+    private List<WCCommCallbacks> mListener;
+    private List<Plugin> mPlugins;
+    private int mActivePlugin;
 
 
 
@@ -65,72 +54,45 @@ public class SocketConnectionHandler extends WCProtocol {
 
     private SocketConnectionHandler(Context context)
     {
-        super();
-
-
+        super("");
+        mCallbacks = this;
         mContext = context;
-        mConnectionState = ConnectionState.DISCONNECTED;
-        mListener = new ArrayList<>();
-
-
         mUIHandler = new Handler(Looper.getMainLooper());
+        mListener = new ArrayList<>();
+        mPlugins = new ArrayList<>();
+        mActivePlugin = -1;
     }
 
 
-    public void addSocketConnectionListener(SocketConnectionListener listener) {
+    public void addSocketConnectionListener(WCCommCallbacks listener) {
         if(!mListener.contains(listener)) {
             mListener.add(listener);
         }
     }
 
-    public void removeSocketConnectionListener(SocketConnectionListener listener) {
+    public void removeSocketConnectionListener(WCCommCallbacks listener) {
         mListener.remove(listener);
     }
 
-    public void setConnectionState(final ConnectionState connectionState) {
-        this.mConnectionState = connectionState;
+
+    public List<Plugin> getPlugins() {
+        return mPlugins;
+    }
+
+    public int getActivePlugin() {
+        return mActivePlugin;
+    }
+
+    public void setConnectionState(final WCCommCallbacks.STATE connectionState) {
         mUIHandler.post(new Runnable() {
             @Override
             public void run() {
-                for(SocketConnectionListener listener : mListener) {
+                for(WCCommCallbacks listener : mListener) {
                     listener.onStateChanged(connectionState);
                 }
             }
         });
 
-    }
-
-    @Override
-    protected void readAndProcess() throws IOException, WCCommunication.ProtocolException {
-        List<Plugin> oldList = mPlugins;
-        int oldActive = mActivePlugin;
-        super.readAndProcess();
-
-        if(oldList.size() != mPlugins.size()) {
-            mUIHandler.post(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    for(SocketConnectionHandler.SocketConnectionListener listener : mListener) {
-                        listener.onPluginListChanged();
-                    }
-                }
-            });
-        }
-
-        if(oldActive != mActivePlugin) {
-            mUIHandler.post(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    for(SocketConnectionHandler.SocketConnectionListener listener : mListener) {
-                        listener.onActivePluginChanged();
-                    }
-                }
-            });
-        }
     }
 
     public void start() {
@@ -156,17 +118,9 @@ public class SocketConnectionHandler extends WCProtocol {
     @Override
     public synchronized void disconnect() {
         super.disconnect();
-        setConnectionState(ConnectionState.DISCONNECTED);
+        setConnectionState(WCCommCallbacks.STATE.DISCONNECTED);
     }
 
-
-
-    public void getConfiguration() throws IOException {
-        if(!isConnected())
-            return;
-        mSendingProxy.post(makeSimpleRawPkg("GET_CONFIG",0));
-
-    }
 
 
 
@@ -176,10 +130,51 @@ public class SocketConnectionHandler extends WCProtocol {
         mSendingProxy.post(makeSimpleRawPkg("SEND_EVENT", event));
     }
 
+    public void sendButtonEvent(int event) {
+        if(event == WCProtocol.EVENT_LEFT) {
+            mSendingProxy.post(rawPacketLeft);
+        }else if(event == WCProtocol.EVENT_RIGHT) {
+            mSendingProxy.post(rawPacketRight);
+        }else if(event == WCProtocol.EVENT_RETURN) {
+            mSendingProxy.post(rawPacketReturn);
+        }
+    }
+
+
+
     public void setActivePlugin(int index)  {
         if(!isConnected())
             return;
         mSendingProxy.post(makeSimpleRawPkg("SET_ACTIVE_PLUGIN", index));
+    }
+
+
+
+    @Override
+    public void onPluginsChanged(final Collection<Plugin> plugins) {
+        mPlugins.clear();
+        mPlugins.addAll(plugins);
+        mUIHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                for(WCCommCallbacks listener : mListener) {
+                    listener.onPluginsChanged(plugins);
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onActivePluginChanged(final int index) {
+        mActivePlugin = index;
+        mUIHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                for(WCCommCallbacks listener : mListener) {
+                    listener.onActivePluginChanged(index);
+                }
+            }
+        });
     }
 
 
@@ -188,8 +183,7 @@ public class SocketConnectionHandler extends WCProtocol {
         private final LinkedBlockingDeque<byte[]> outQueue = new LinkedBlockingDeque<>();
 
         private WCProtocolProxy() {
-            //super(hostName, callbacks);
-
+            super();
         }
 
         public void post(byte [] pkt) {
@@ -207,7 +201,9 @@ public class SocketConnectionHandler extends WCProtocol {
                     continue;
                 }
                 try {
+                    Log.d("send","sending start");
                     writeRaw(l);
+                    Log.d("send","sending end");
                 } catch (Exception ignored) {
                     /* input thread will handle that */
                     outQueue.clear();
@@ -225,13 +221,13 @@ public class SocketConnectionHandler extends WCProtocol {
             while (mRunning) {
                 try{
                     connect();
-                    setConnectionState(ConnectionState.CONNECTED);
+                    setConnectionState(WCCommCallbacks.STATE.CONNECTED);
                 }catch (UnknownHostException e) {
-                    setConnectionState(ConnectionState.HOST_UNKNOWN);
+                    setConnectionState(WCCommCallbacks.STATE.HOST_UNKNOWN);
                     e.printStackTrace();
                 }
                 catch (IOException e) {
-                    setConnectionState(ConnectionState.COULD_NOT_CONNECT);
+                    setConnectionState(WCCommCallbacks.STATE.COULD_NOT_CONNECT);
                     e.printStackTrace();
                 }
                 if(isConnected()) {
@@ -262,7 +258,7 @@ public class SocketConnectionHandler extends WCProtocol {
                 } catch (ProtocolException | IOException e) {
                     disconnect();
                     /* TODO: give more information to the user, especially on ProtocolException */
-                    setConnectionState(ConnectionState.DISCONNECTED);
+                    setConnectionState(WCCommCallbacks.STATE.DISCONNECTED);
                     //setStateOnActivity(WCCommCallbacks.STATE.DISCONNECTED);
                 }
             }
