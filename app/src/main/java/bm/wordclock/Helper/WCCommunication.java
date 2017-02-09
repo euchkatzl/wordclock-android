@@ -1,6 +1,4 @@
-package bm.wordclock;
-
-import android.support.annotation.NonNull;
+package bm.wordclock.Helper;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -20,12 +18,15 @@ import java.nio.ByteBuffer;
  */
 
 public class WCCommunication {
+
+
+
     private DataInputStream dis;
     private DataOutputStream dos;
     private Socket socket;
     private boolean connected = false;
 
-    private final String mHostName;
+    protected String mHostName;
 
     private static final int PORT = 8081;
     public static final int API_LEVEL = 1;
@@ -45,12 +46,17 @@ public class WCCommunication {
         }
     }
 
-    public WCCommunication(@NonNull String hostName) {
-        mHostName = hostName;
+    public WCCommunication() {
     }
 
-    public synchronized void connect() throws IOException {
-        disconnect();
+    protected boolean isConnected() {return connected;}
+
+    public synchronized void connect() throws IOException  {
+        if(mHostName.equals("")) {
+            return;
+        }
+        if(connected)
+            disconnect();
         InetAddress addr = InetAddress.getByName(mHostName);
         socket = new Socket(addr, PORT);
         InputStream is = socket.getInputStream();
@@ -125,7 +131,7 @@ public class WCCommunication {
         }
     }
 
-    public static JSONObject createMessage() {
+    protected  JSONObject createMessage() {
         JSONObject req = new JSONObject();
         try {
             req.put("API", API_LEVEL);
@@ -134,13 +140,24 @@ public class WCCommunication {
         return req;
     }
 
-    protected static byte [] getRawBuffer(JSONObject obj) throws UnsupportedEncodingException {
+    protected  byte [] getRawBuffer(JSONObject obj) throws UnsupportedEncodingException {
         String serialized = obj.toString();
         byte[] buff = serialized.getBytes("UTF-8");
         return ByteBuffer.allocate(4 + buff.length)
                 .putInt(buff.length)
                 .put(buff)
                 .array();
+    }
+
+    protected byte [] makeSimpleRawPkg(String cmd, int param) {
+        try {
+            JSONObject obj = createMessage();
+            obj.put(cmd, param);
+            return getRawBuffer(obj);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 }

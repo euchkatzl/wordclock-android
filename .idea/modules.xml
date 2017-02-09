@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/WordClock.iml" filepath="$PROJECT_DIR$/WordClock.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/wordclock-android-fork.iml" filepath="$PROJECT_DIR$/wordclock-android-fork.iml" />
     </modules>
   </component>
 </project>

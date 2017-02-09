@@ -1,4 +1,4 @@
-package bm.wordclock;
+package bm.wordclock.model;
 
 import android.support.annotation.NonNull;
 

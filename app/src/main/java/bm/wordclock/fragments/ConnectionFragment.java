@@ -1,4 +1,4 @@
-package bm.wordclock;
+package bm.wordclock.fragments;
 
 
 import android.os.Bundle;
@@ -9,12 +9,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import bm.wordclock.R;
+import bm.wordclock.android.R;
 
 /**
  * A simple {@link Fragment} subclass.
  */
-public class ConnectionFragment extends Fragment {
+public class ConnectionFragment extends BaseFragment {
 
     private TextView mStatusText;
 
@@ -43,4 +43,8 @@ public class ConnectionFragment extends Fragment {
         mStatusText.setVisibility(View.INVISIBLE);
     }
 
+    @Override
+    public int getDrawerId() {
+        return -1;
+    }
 }

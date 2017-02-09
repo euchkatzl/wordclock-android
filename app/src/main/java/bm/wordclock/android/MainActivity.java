@@ -1,10 +1,8 @@
-package bm.wordclock;
+package bm.wordclock.android;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.GravityCompat;
@@ -16,21 +14,24 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
-import java.util.Collection;
+import bm.wordclock.Helper.SocketConnectionHandler;
+
+import bm.wordclock.fragments.BaseFragment;
+import bm.wordclock.fragments.ConnectionFragment;
+import bm.wordclock.fragments.ControllerFragment;
+import bm.wordclock.fragments.PluginsListFragment;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        PluginsListFragment.OnFragmentInteractionListener,
-        ControllerFragment.OnFragmentInteractionListener,
-        WCCommCallbacks {
+        SocketConnectionHandler.SocketConnectionListener
+        {
 
     private ConnectionFragment mConnectionFragment;
     private PluginsListFragment mPluginListFragment;
     private ControllerFragment mControllerFragment;
+    private boolean mIsConnecting;
+    NavigationView mNavigationView;
 
-    private boolean connecting;
-
-    private CommProxy mCommunication;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,8 +47,8 @@ public class MainActivity extends AppCompatActivity
         drawer.addDrawerListener(toggle);
         toggle.syncState();
 
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(this);
+        mNavigationView = (NavigationView) findViewById(R.id.nav_view);
+        mNavigationView.setNavigationItemSelectedListener(this);
 
         mConnectionFragment = new ConnectionFragment();
         mPluginListFragment = new PluginsListFragment();
@@ -56,29 +57,39 @@ public class MainActivity extends AppCompatActivity
         selectFragment(mConnectionFragment);
     }
 
-    private void selectFragment(Fragment fragment) {
-        connecting = (fragment == mConnectionFragment);
+    private void selectFragment(BaseFragment fragment) {
+        mIsConnecting = (fragment == mConnectionFragment);
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.content_main, fragment)
                 .commitAllowingStateLoss();
+
+    }
+
+    public void onFragmentResume(int drawerId)
+    {
+        mNavigationView.setCheckedItem(drawerId);
+        //Call this to force NavigationView reloading its List
+        mNavigationView.setItemTextColor(mNavigationView.getItemTextColor());
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        selectFragment(mConnectionFragment);
+        SocketConnectionHandler.getSocketConnectionHandler().stop();
+        SocketConnectionHandler.getSocketConnectionHandler().removeSocketConnectionListener(this);
+    }
 
-        mCommunication.stop();
-        mCommunication = null;
+    @Override
+    protected void onResume() {
+        super.onResume();
+        SocketConnectionHandler.getSocketConnectionHandler().addSocketConnectionListener(this);
     }
 
     @Override
     public void onPostResume() {
         super.onPostResume();
-
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-        String hostName = sharedPref.getString(SettingsActivity.GeneralPreferenceFragment.KEY_HOST_NAME, "");
-        mCommunication = new CommProxy(this, hostName, this);
-        mCommunication.start();
+        SocketConnectionHandler.getSocketConnectionHandler().start();
     }
 
     @Override
@@ -123,7 +134,7 @@ public class MainActivity extends AppCompatActivity
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
-        if (!connecting) {
+        if (!mIsConnecting) {
             // Handle navigation view item clicks here.
             int id = item.getItemId();
 
@@ -140,14 +151,10 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onPluginChange(int index) {
-        mCommunication.setActivePlugin(index);
-    }
-
-    @Override
-    public void setState(STATE state) {
+    public void onStateChanged(SocketConnectionHandler.ConnectionState state) {
         switch (state) {
             case CONNECTED:
+
                 selectFragment(mPluginListFragment);
                 break;
             case DISCONNECTED:
@@ -165,27 +172,12 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void setPlugins(Collection<Plugin> plugins) {
-        mPluginListFragment.setPlugins(plugins);
+    public void onPluginListChanged() {
+
     }
 
     @Override
-    public void setActivePlugin(int index) {
-        mPluginListFragment.setCurrentPlugin(index);
-    }
+    public void onActivePluginChanged() {
 
-    @Override
-    public void onLeftClicked() {
-        mCommunication.btn_left();
-    }
-
-    @Override
-    public void onRightClicked() {
-        mCommunication.btn_right();
-    }
-
-    @Override
-    public void onReturnClicked() {
-        mCommunication.btn_return();
     }
 }

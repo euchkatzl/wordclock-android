@@ -1,4 +1,4 @@
-package bm.wordclock;
+package bm.wordclock.android;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -128,7 +128,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
-            addPreferencesFromResource(R.xml.preferences);
+            addPreferencesFromResource(bm.wordclock.android.R.xml.preferences);
             setHasOptionsMenu(true);
 
             // Bind the summaries of EditText/List/Dialog/Ringtone preferences

@@ -1,4 +1,4 @@
-package bm.wordclock;
+package bm.wordclock.android;
 
 import android.content.res.Configuration;
 import android.os.Bundle;

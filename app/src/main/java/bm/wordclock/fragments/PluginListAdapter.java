@@ -1,4 +1,4 @@
-package bm.wordclock;
+package bm.wordclock.fragments;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -8,15 +8,16 @@ import android.widget.ArrayAdapter;
 import android.widget.RadioButton;
 import android.widget.TextView;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+
+import bm.wordclock.android.R;
+import bm.wordclock.model.Plugin;
 
 /**
  * Created by mrks on 04.02.17.
  */
 
-public class PluginListAdapter extends ArrayAdapter<Plugin> {
+public class PluginListAdapter extends ArrayAdapter<Plugin>  {
     private final LayoutInflater mInflater;
     private int mCurrentSelected;
 
@@ -56,4 +57,5 @@ public class PluginListAdapter extends ArrayAdapter<Plugin> {
         mCurrentSelected = index;
         notifyDataSetChanged();
     }
+
 }
